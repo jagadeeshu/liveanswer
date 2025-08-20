@@ -8,6 +8,13 @@
 <body>
   <h2>📷 OCR → Gemini → Telegram Bot</h2>
   <video id="video" autoplay playsinline style="width:100%;border:1px solid #000;"></video>
+  
+  <!-- Zoom control -->
+  <div>
+    <label for="zoom">🔍 Zoom:</label>
+    <input id="zoom" type="range" min="1" max="5" step="0.1" value="1">
+  </div>
+
   <pre id="log"></pre>
 
   <script>
@@ -18,11 +25,38 @@
 
     const video = document.getElementById("video");
     const log = document.getElementById("log");
+    const zoomSlider = document.getElementById("zoom");
 
-    // Start camera
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => log.innerText = "Camera error: " + err);
+    let videoTrack;
+
+    // Start camera (prefer back camera)
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } }
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      videoTrack = stream.getVideoTracks()[0];
+
+      // Check if zoom supported
+      const capabilities = videoTrack.getCapabilities();
+      if (capabilities.zoom) {
+        zoomSlider.min = capabilities.zoom.min;
+        zoomSlider.max = capabilities.zoom.max;
+        zoomSlider.step = capabilities.zoom.step || 0.1;
+        zoomSlider.value = capabilities.zoom.min;
+        zoomSlider.style.display = "block";
+      } else {
+        zoomSlider.style.display = "none"; // hide if not supported
+      }
+    })
+    .catch(err => log.innerText = "Camera error: " + err);
+
+    // Zoom handler
+    zoomSlider.addEventListener("input", () => {
+      if (!videoTrack) return;
+      const constraints = { advanced: [{ zoom: zoomSlider.value }] };
+      videoTrack.applyConstraints(constraints);
+    });
 
     // Take snapshot from video
     function captureFrame() {
