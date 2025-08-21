@@ -7,58 +7,91 @@
 </head>
 <body>
   <h2>📷 OCR → Gemini → Telegram Bot</h2>
+
   <video id="video" autoplay playsinline style="width:100%;border:1px solid #000;"></video>
-  
-  <!-- Zoom control -->
+
+  <!-- Zoom control buttons -->
   <div>
-    <label for="zoom">🔍 Zoom:</label>
-    <input id="zoom" type="range" min="1" max="5" step="0.1" value="1">
+    <button id="zoomOut">➖ Zoom Out</button>
+    <button id="zoomIn">➕ Zoom In</button>
+  </div>
+
+  <!-- Camera switch button -->
+  <div>
+    <button id="switchCamera">🔄 Switch Camera</button>
   </div>
 
   <pre id="log"></pre>
 
   <script>
-    // 🔑 Config
     const GEMINI_API_KEY = "AIzaSyD6tSpHZBioYNcIPsJ2BLf2hhniyIFYb9s";
     const TELEGRAM_BOT_TOKEN = "8241568142:AAG-mtJeGRL-YzCd_M_r3F1FbteDLeOrVO8";
     const TELEGRAM_CHAT_ID = "7225122599";
 
     const video = document.getElementById("video");
     const log = document.getElementById("log");
-    const zoomSlider = document.getElementById("zoom");
+    const switchBtn = document.getElementById("switchCamera");
+    const zoomInBtn = document.getElementById("zoomIn");
+    const zoomOutBtn = document.getElementById("zoomOut");
 
     let videoTrack;
+    let currentStream;
+    let currentFacingMode = "environment"; // or "user"
+    let currentZoom = 1;
+    let minZoom = 1;
+    let maxZoom = 1;
+    let zoomStep = 0.1;
 
-    // Start camera (prefer back camera)
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } }
-    })
-    .then(stream => {
-      video.srcObject = stream;
-      videoTrack = stream.getVideoTracks()[0];
-
-      // Check if zoom supported
-      const capabilities = videoTrack.getCapabilities();
-      if (capabilities.zoom) {
-        zoomSlider.min = capabilities.zoom.min;
-        zoomSlider.max = capabilities.zoom.max;
-        zoomSlider.step = capabilities.zoom.step || 0.1;
-        zoomSlider.value = capabilities.zoom.min;
-        zoomSlider.style.display = "block";
-      } else {
-        zoomSlider.style.display = "none"; // hide if not supported
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
       }
-    })
-    .catch(err => log.innerText = "Camera error: " + err);
 
-    // Zoom handler
-    zoomSlider.addEventListener("input", () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: currentFacingMode } }
+        });
+
+        currentStream = stream;
+        video.srcObject = stream;
+        videoTrack = stream.getVideoTracks()[0];
+
+        const capabilities = videoTrack.getCapabilities();
+        if (capabilities.zoom) {
+          minZoom = capabilities.zoom.min;
+          maxZoom = capabilities.zoom.max;
+          zoomStep = capabilities.zoom.step || 0.1;
+          currentZoom = minZoom;
+
+          applyZoom(currentZoom);
+        }
+      } catch (err) {
+        log.innerText = "Camera error: " + err;
+      }
+    }
+
+    function applyZoom(zoomLevel) {
       if (!videoTrack) return;
-      const constraints = { advanced: [{ zoom: zoomSlider.value }] };
-      videoTrack.applyConstraints(constraints);
+      videoTrack.applyConstraints({ advanced: [{ zoom: zoomLevel }] });
+    }
+
+    zoomInBtn.addEventListener("click", () => {
+      if (!videoTrack) return;
+      currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+      applyZoom(currentZoom);
     });
 
-    // Take snapshot from video
+    zoomOutBtn.addEventListener("click", () => {
+      if (!videoTrack) return;
+      currentZoom = Math.max(currentZoom - zoomStep, minZoom);
+      applyZoom(currentZoom);
+    });
+
+    switchBtn.addEventListener("click", () => {
+      currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+      startCamera();
+    });
+
     function captureFrame() {
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
@@ -68,12 +101,10 @@
       return canvas;
     }
 
-    // OCR → Gemini → Telegram
     async function processFrame() {
       const canvas = captureFrame();
       log.innerText = "⏳ Extracting text...";
 
-      // OCR with Tesseract.js
       const result = await Tesseract.recognize(canvas, 'eng');
       const extractedText = result.data.text.trim();
       log.innerText = "📖 OCR Text: " + extractedText;
@@ -83,7 +114,6 @@
         return;
       }
 
-      // Send to Gemini
       const geminiRes = await fetch(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY,
         {
@@ -94,12 +124,12 @@
           })
         }
       );
+
       const geminiData = await geminiRes.json();
       const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response";
 
       log.innerText += "\n🤖 Gemini: " + answer;
 
-      // Send to Telegram
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,7 +139,7 @@
       log.innerText += "\n📩 Sent to Telegram!";
     }
 
-    // Run every 30 seconds
+    startCamera();
     setInterval(processFrame, 30000);
   </script>
 </body>
