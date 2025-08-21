@@ -12,8 +12,8 @@
 
   <!-- Zoom control buttons -->
   <div>
-    <button id="zoomOut">➖ Zoom Out1</button>
-    <button id="zoomIn">➕ Zoom In1</button>
+    <button id="zoomOut">➖ Zoom Out</button>
+    <button id="zoomIn">➕ Zoom In</button>
   </div>
 
   <!-- Camera switch button -->
@@ -120,7 +120,11 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: "Answer this: " + extractedText }]}]
+            contents: [{
+              parts: [{
+                text: "This question is from SAP Quizs 2507 Exam Practice Test. Give me ONLY the correct answer (no explanation, no extra text). Question: " + extractedText
+              }]
+            }]
           })
         }
       );
@@ -128,7 +132,7 @@
       const geminiData = await geminiRes.json();
       const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response";
 
-      log.innerText += "\n🤖 Gemini: " + answer;
+      log.innerText += "\n🤖 Gemini Answer: " + answer;
 
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST",
@@ -140,9 +144,7 @@
     }
 
     startCamera();
-    setInterval(processFrame, 15000);
+    setInterval(processFrame, 15000); // every 15 seconds
   </script>
 </body>
 </html>
-
-
